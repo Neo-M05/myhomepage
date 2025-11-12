@@ -4,19 +4,31 @@ import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity, FlatList, A
 import { MenuContext } from './MenuContext';
 
 export default function AddMenuItemScreen({ navigation }) {
-    const { menuItems, setMenuItems } = useContext(MenuContext);
+    const { allMenuItems, menuItems, setMenuItems, todaysSpecialMenu } = useContext(MenuContext);
     const [courseType, setCourseType] = useState('Main');
     const [dishName, setDishName] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
 
     const handleAddDish = () => {
+        // Improved validation with specific error messages
         if (!dishName.trim()) {
-            Alert.alert('Error', 'Please enter a dish name');
+            Alert.alert('Missing Information', 'Please enter a dish name');
+            return;
+        }
+        if (!description.trim()) {
+            Alert.alert('Missing Information', 'Please enter a description');
             return;
         }
         if (!price.trim()) {
-            Alert.alert('Error', 'Please enter a price');
+            Alert.alert('Missing Information', 'Please enter a price');
+            return;
+        }
+
+        // Validate price format
+        const priceRegex = /^(R?\d+)$/;
+        if (!priceRegex.test(price)) {
+            Alert.alert('Invalid Price', 'Please enter a valid price (e.g., 150 or R150)');
             return;
         }
 
@@ -39,9 +51,26 @@ export default function AddMenuItemScreen({ navigation }) {
     };
 
     const handleRemoveDish = (id) => {
-        const updated = menuItems.filter(item => item.id !== id);
-        setMenuItems(updated);
+        // Check if it's a today's special item or chef-added item
+        const isTodaysSpecial = todaysSpecialMenu.some(item => item.id === id);
+        
+        if (isTodaysSpecial) {
+            // For today's special items, we'll create a modified version without the deleted item
+            const updatedSpecials = todaysSpecialMenu.filter(item => item.id !== id);
+            
+            // Since we can't directly modify todaysSpecialMenu (it's hardcoded),
+            // we'll show a message that today's specials can't be deleted
+            Alert.alert('Cannot Delete', 'Today\'s special items cannot be deleted as they are pre-set menu items.');
+            return;
+        } else {
+            // For chef-added items, remove normally
+            const updated = menuItems.filter(item => item.id !== id);
+            setMenuItems(updated);
+        }
     }
+
+    // Filter items by selected course for display
+    const filteredItems = allMenuItems.filter(item => item.course === courseType);
 
     return (
         <View style={styles.container}>
@@ -83,19 +112,20 @@ export default function AddMenuItemScreen({ navigation }) {
             {/* Form Inputs */}
             <TextInput
                 style={styles.input}
-                placeholder="Dish Name"
+                placeholder="Dish Name *"
                 value={dishName}
                 onChangeText={setDishName}
             />
             <TextInput
                 style={styles.input}
-                placeholder="Description"
+                placeholder="Description *"
                 value={description}
                 onChangeText={setDescription}
+                multiline
             />
             <TextInput
                 style={styles.input}
-                placeholder="Price (e.g., 150 or R150)"
+                placeholder="Price * (e.g., 150 or R150)"
                 value={price}
                 onChangeText={setPrice}
                 keyboardType="numeric"
@@ -106,11 +136,13 @@ export default function AddMenuItemScreen({ navigation }) {
                 <Text style={styles.saveText}>Save Dish</Text>
             </TouchableOpacity>
 
-            {/* Current Menu Items List */}
-            <Text style={styles.currentMenuHeader}>Current Menu Items ({menuItems.length})</Text>
+            {/* Current Menu Items List - NOW SHOWS ALL ITEMS FOR SELECTED COURSE */}
+            <Text style={styles.currentMenuHeader}>
+                {courseType} Items ({filteredItems.length})
+            </Text>
             
             <FlatList
-                data={menuItems}
+                data={filteredItems}
                 keyExtractor={(item) => item.id}
                 style={styles.list}
                 renderItem={({ item }) => (
@@ -122,6 +154,7 @@ export default function AddMenuItemScreen({ navigation }) {
                                 <Text style={styles.dishDescription}>{item.description}</Text>
                             ) : null}
                         </View>
+                        {/* Show delete button for ALL items (both today's specials and chef-added) */}
                         <TouchableOpacity 
                             onPress={() => handleRemoveDish(item.id)} 
                             style={styles.deleteButton}
@@ -134,11 +167,11 @@ export default function AddMenuItemScreen({ navigation }) {
                     </View>
                 )}
                 ListEmptyComponent={
-                    <Text style={styles.emptyListText}>No dishes added yet. Create your first dish above!</Text>
+                    <Text style={styles.emptyListText}>No {courseType.toLowerCase()} items yet.</Text>
                 }
             />
 
-            {/* Footer Navigation */}
+            {/* Footer Navigation - CHANGED Profile to Menu */}
             <View style={styles.navBar}>
                 <TouchableOpacity onPress={() => navigation.navigate('Home')}>
                     <Text style={styles.navItem}>Home</Text>
@@ -149,8 +182,8 @@ export default function AddMenuItemScreen({ navigation }) {
                 <TouchableOpacity onPress={() => navigation.navigate('AddMenuItem')}>
                     <Text style={[styles.navItem, styles.activeNavItem]}>Add</Text>
                 </TouchableOpacity>
-                <TouchableOpacity>
-                    <Text style={styles.navItem}>Profile</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('DetailedMenu', { category: 'Starter' })}>
+                    <Text style={styles.navItem}>Menu</Text>
                 </TouchableOpacity>
             </View>
             <StatusBar style="auto" />
@@ -158,7 +191,7 @@ export default function AddMenuItemScreen({ navigation }) {
     );
 }
 
-// Your existing styles...
+// COMPLETE STYLES OBJECT - Make sure this is at the bottom of your file
 const styles = StyleSheet.create({
     container: {
         flex: 1,

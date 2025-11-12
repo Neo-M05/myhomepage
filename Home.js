@@ -2,33 +2,39 @@ import React, { useContext } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { MenuContext } from './MenuContext';
 
-// Component for a Single Menu Item
+// Move TodayMenuItem component OUTSIDE of HomeScreen
 const TodayMenuItem = ({ item }) => (
   <View style={styles.todayMenuItemContainer}>
     <Image
-      source={item.image || require('./assets/dining.jpg')}  // Use existing image as fallback
+      source={item.image}
       style={styles.todayMenuItemImage}
     />
     <View style={styles.todayMenuItemDetails}>
       <Text style={styles.todayMenuItemName}>{item.name}</Text>
-      {item.description ? (
-        <Text style={styles.todayMenuItemDescription}>{item.description}</Text>
-      ) : null}
       <Text style={styles.todayMenuItemPrice}>{item.price}</Text>
     </View>
   </View>
 );
 
 export default function HomeScreen({ navigation }) {
-  const { menuItems } = useContext(MenuContext);
+  const { allMenuItems, todaysSpecialMenu } = useContext(MenuContext);
 
-  // Calculate counts dynamically from chef-added items
-  const starterItems = menuItems.filter(item => item.course === 'Starter');
-  const mainItems = menuItems.filter(item => item.course === 'Main');
-  const dessertItems = menuItems.filter(item => item.course === 'Dessert');
+  // Calculate counts for ALL items (today's specials + chef-added)
+  const starterItems = allMenuItems.filter(item => item.course === 'Starter');
+  const mainItems = allMenuItems.filter(item => item.course === 'Main');
+  const dessertItems = allMenuItems.filter(item => item.course === 'Dessert');
+
+  // Calculate counts for chef-added items only (for display)
+  const chefAddedItems = allMenuItems.filter(item => 
+    !todaysSpecialMenu.some(special => special.id === item.id)
+  );
+
+  const totalStarters = starterItems.length;
+  const totalMains = mainItems.length;
+  const totalDesserts = dessertItems.length;
 
   const navigateToDetailedMenu = (category) => {
-    console.log(`Navigating to detailed menu for: ${category}`);
+    navigation.navigate('DetailedMenu', { category });
   };
 
   return (
@@ -50,54 +56,81 @@ export default function HomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageHeading}>Home</Text>
 
-        {/* Menu Tabs - DYNAMIC COUNTS */}
+        {/* Menu Tabs - UPDATED: Button-style tabs with ALL items count */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity style={styles.tab} onPress={() => navigateToDetailedMenu('Starter')}>
-            <Text style={styles.tabText}>Starter {starterItems.length}</Text>
+          <TouchableOpacity 
+            style={styles.tabButton} 
+            onPress={() => navigateToDetailedMenu('Starter')}
+          >
+            <Text style={styles.tabButtonText}>Starter {totalStarters}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tab} onPress={() => navigateToDetailedMenu('Main')}>
-            <Text style={styles.tabText}>Main {mainItems.length}</Text>
+          <TouchableOpacity 
+            style={styles.tabButton} 
+            onPress={() => navigateToDetailedMenu('Main')}
+          >
+            <Text style={styles.tabButtonText}>Main {totalMains}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tab} onPress={() => navigateToDetailedMenu('Desserts')}>
-            <Text style={styles.tabText}>Desserts {dessertItems.length}</Text>
-          </TouchableOpacity>
-        </View>
-       
-        {/* Summary Block */}
-        <View style={styles.summaryBlock}>
-          <TouchableOpacity style={styles.summaryRow} onPress={() => navigateToDetailedMenu('Starter')}>
-            <Text style={styles.summaryCategoryText}>Starter</Text>
-            <Text style={styles.summaryPriceText}>
-              {starterItems.length > 0 ? `R${starterItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0)}` : 'R0'}
-            </Text>
-          </TouchableOpacity>
-         
-          <TouchableOpacity style={styles.summaryRow} onPress={() => navigateToDetailedMenu('Main')}>
-            <Text style={styles.summaryCategoryText}>Main</Text>
-            <Text style={styles.summaryPriceText}>
-              {mainItems.length > 0 ? `R${mainItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0)}` : 'R0'}
-            </Text>
-          </TouchableOpacity>
-         
-          <TouchableOpacity style={styles.summaryRowLast} onPress={() => navigateToDetailedMenu('Desserts')}>
-            <Text style={styles.summaryCategoryText}>Dessert</Text>
-            <Text style={styles.summaryPriceText}>
-              {dessertItems.length > 0 ? `R${dessertItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0)}` : 'R0'}
-            </Text>
+          <TouchableOpacity 
+            style={styles.tabButton} 
+            onPress={() => navigateToDetailedMenu('Dessert')}
+          >
+            <Text style={styles.tabButtonText}>Desserts {totalDesserts}</Text>
           </TouchableOpacity>
         </View>
        
-        {/* Today's Menu - Shows chef-added items */}
-        <Text style={styles.todaysMenuHeading}>Today's Menu ({menuItems.length} items)</Text>
+       {/* Summary Block - Using ALL items prices - NOW SHOWING AVERAGE INSTEAD OF TOTAL */}
+<View style={styles.summaryBlock}>
+  <TouchableOpacity style={styles.summaryRow} onPress={() => navigateToDetailedMenu('Starter')}>
+    <Text style={styles.summaryCategoryText}>Starter</Text>
+    <Text style={styles.summaryPriceText}>
+      {starterItems.length > 0 ? 
+        `R${Math.round(starterItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0) / starterItems.length)}` 
+        : 'R0'
+      }
+    </Text>
+  </TouchableOpacity>
+ 
+  <TouchableOpacity style={styles.summaryRow} onPress={() => navigateToDetailedMenu('Main')}>
+    <Text style={styles.summaryCategoryText}>Main</Text>
+    <Text style={styles.summaryPriceText}>
+      {mainItems.length > 0 ? 
+        `R${Math.round(mainItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0) / mainItems.length)}` 
+        : 'R0'
+      }
+    </Text>
+  </TouchableOpacity>
+ 
+  <TouchableOpacity style={styles.summaryRowLast} onPress={() => navigateToDetailedMenu('Dessert')}>
+    <Text style={styles.summaryCategoryText}>Dessert</Text>
+    <Text style={styles.summaryPriceText}>
+      {dessertItems.length > 0 ? 
+        `R${Math.round(dessertItems.reduce((total, item) => total + parseInt(item.price.replace('R', '') || 0), 0) / dessertItems.length)}` 
+        : 'R0'
+      }
+    </Text>
+  </TouchableOpacity>
+</View>
+       
+        {/* Today's Special Menu */}
+        <Text style={styles.todaysMenuHeading}>Today's Special Menu ({todaysSpecialMenu.length})</Text>
 
-        {menuItems.length === 0 ? (
+        <View style={styles.todayMenuGrid}>
+          {todaysSpecialMenu.map(item => (
+            <TodayMenuItem key={item.id} item={item} />
+          ))}
+        </View>
+
+        {/* Chef's Added Items Section */}
+        <Text style={styles.chefMenuHeading}>Chef's Menu Items ({chefAddedItems.length})</Text>
+        
+        {chefAddedItems.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No menu items yet.</Text>
-            <Text style={styles.emptyStateSubtext}>Add your first dish using the + button below!</Text>
+            <Text style={styles.emptyStateText}>No chef-added items yet.</Text>
+            <Text style={styles.emptyStateSubtext}>Add dishes using the + button below!</Text>
           </View>
         ) : (
           <View style={styles.todayMenuGrid}>
-            {menuItems.map(item => (
+            {chefAddedItems.map(item => (
               <TodayMenuItem key={item.id} item={item} />
             ))}
           </View>
@@ -125,16 +158,18 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.iconText}>➕</Text>
           <Text style={styles.footerText}>Add menu item</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerIcon}>
-          <Text style={styles.iconText}>👤</Text>
-          <Text style={styles.footerText}>Profile</Text>
+        <TouchableOpacity 
+          style={styles.footerIcon} 
+          onPress={() => navigation.navigate('DetailedMenu', { category: 'Starter' })}
+        >
+          <Text style={styles.iconText}>📋</Text>
+          <Text style={styles.footerText}>Menu</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// Your existing styles...
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', paddingTop: Platform.OS === 'android' ? 35 : 0 },
   iconText: { fontSize: 24, color: 'grey', marginBottom: 2 },
@@ -144,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20, 
     paddingVertical: 15, 
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'grey',
     borderBottomWidth: 1, 
     borderBottomColor: '#ddd',
   },
@@ -156,13 +191,32 @@ const styles = StyleSheet.create({
     marginRight: 10, 
     borderRadius: 5 
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#333' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: 'white' },
   menuIcon: { fontSize: 28, fontWeight: 'bold', color: '#333' },
   content: { paddingHorizontal: 20 },
   pageHeading: { fontSize: 32, fontWeight: '900', marginVertical: 15 },
-  tabContainer: { flexDirection: 'row', marginBottom: 20 },
-  tab: { marginRight: 20, paddingVertical: 5 },
-  tabText: { fontSize: 16, color: '#333', fontWeight: 'bold' },
+  // UPDATED: Button-style tabs
+  tabContainer: { 
+    flexDirection: 'row', 
+    marginBottom: 20,
+    justifyContent: 'space-between'
+  },
+  tabButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
   summaryBlock: {
     backgroundColor: '#333', borderRadius: 8, overflow: 'hidden', marginBottom: 20, marginTop: 10,
   },
@@ -175,7 +229,20 @@ const styles = StyleSheet.create({
   },
   summaryCategoryText: { fontSize: 16, color: '#fff', fontWeight: '500' },
   summaryPriceText: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
-  todaysMenuHeading: { fontSize: 20, fontWeight: 'bold', marginBottom: 15, marginTop: 15 },
+  todaysMenuHeading: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    marginBottom: 15, 
+    marginTop: 15,
+    color: '#000'
+  },
+  chefMenuHeading: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginBottom: 15, 
+    marginTop: 25,
+    color: '#333'
+  },
   todayMenuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   todayMenuItemContainer: {
     width: '48%', backgroundColor: '#404040', borderRadius: 8, marginBottom: 15, overflow: 'hidden',
@@ -188,7 +255,6 @@ const styles = StyleSheet.create({
   },
   todayMenuItemDetails: { padding: 8, paddingBottom: 10 },
   todayMenuItemName: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
-  todayMenuItemDescription: { fontSize: 12, color: '#ccc', marginBottom: 4 },
   todayMenuItemPrice: { fontSize: 16, fontWeight: '900', color: '#FF8C00' },
   footer: {
     flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10,
